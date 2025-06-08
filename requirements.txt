@@ -1,0 +1,5 @@
+torch # having cuda enabled is optional, but recommended
+torchvision
+torchaudio
+opencv-python
+pandas
