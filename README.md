@@ -40,27 +40,27 @@ pip install -r requirements.txt
 | CNN-LSTM (Baseline) | 63.2% | 0.61 | 87ms/video |
 | Custom 3D-CNN | 67.8% | 0.65 | 104ms/video |
 
-## 🚧 Future Work
-- [ ] **IFEED Integration**
-  - [x] Adapt dataloader for 170x140px images
-  - [ ] Implement ResNet-50 baseline
-    - [ ] Training pipeline
-    - [ ] Inference pipeline
-  - [ ] Benchmark ResNet-50 on IFEED
+## 🚧 TODO
+- [ ] **MELD (Video, Text, Audio)**
+  - [x] Dataloader for MELD (video & text)
+  - [x] Vision model class (pretrained `rd3_18`)
+  - [x] Text model class (pretrained `bert`)
+  - [ ] Audio model class (pretrained)
+  - [ ] Multimodal dataloader (combine modalities)
+  - [ ] FusionModel (text + audio + video)
+      - [ ] Integrate vision encoder (e.g., 3D-CNN)
+      - [ ] Integrate text encoder (e.g., BERT)
+      - [ ] Integrate audio encoder
+      - [ ] Attention-based fusion layer
+  - [ ] Train & benchmark pretrained models
+  - [ ] Evaluate need for custom models (if pretrained underperforms)
+  - [ ] Benchmark on MELD (accuracy, F1, speed)
 
-- [ ] **MELD Improvements**
-  - [ ] Train Custom 3D-CNN
-  - [ ] Inference with Custom 3D-CNN
-  - [ ] Benchmark 3D-CNN on MELD
-
-- [ ] **Multimodal Fusion**
-  - [ ] Implement FusionModel (image + text)
-    - [ ] Integrate ResNet-50 image encoder
-    - [ ] Integrate BERT text encoder
-    - [ ] Add attention-based fusion layer
-  - [ ] Train FusionModel
-  - [ ] Inference with FusionModel
-  - [ ] Benchmark FusionModel
+- [ ] **IFEED (Images)**
+  - [ ] Dataloader for IFEED (170x140px images)
+  - [ ] Vision model class (ResNet-50 baseline, pretrained)
+  - [ ] Training & inference pipeline
+  - [ ] Benchmark on IFEED
 
 - [ ] **Deployment**
   - [ ] Web demo using Gradio
