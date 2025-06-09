@@ -1,7 +1,7 @@
 # Cross-Dataset Emotion Recognition Benchmark (MELD vs IFEED)
 
 **Author**: NevroHelios 
-**Last Updated**: 07 June 2025
+**Last Updated**: 09 June 2025
 
 ## 🎯 Objective
 Compare video (MELD) and image (IFEED) emotion recognition performance through:
@@ -45,13 +45,13 @@ pip install -r requirements.txt
   - [x] Dataloader for MELD (video & text)
   - [x] Vision model class (pretrained `rd3_18`)
   - [x] Text model class (pretrained `bert`)
-  - [ ] Audio model class (pretrained)
-  - [ ] Multimodal dataloader (combine modalities)
-  - [ ] FusionModel (text + audio + video)
-      - [ ] Integrate vision encoder (e.g., 3D-CNN)
-      - [ ] Integrate text encoder (e.g., BERT)
-      - [ ] Integrate audio encoder
-      - [ ] Attention-based fusion layer
+  - [x] Audio model class (pretrained)
+  - [x] Multimodal dataloader (combine modalities)
+  - [x] FusionModel (text + audio + video)
+      - [x] Integrate vision encoder (`1r3d-18`)
+      - [x] Integrate text encoder (`bert`)
+      - [x] Integrate audio encoder (`conformer`)
+      - [x] Attention-based fusion layer
   - [ ] Train & benchmark pretrained models
   - [ ] Evaluate need for custom models (if pretrained underperforms)
   - [ ] Benchmark on MELD (accuracy, F1, speed)

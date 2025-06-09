@@ -138,6 +138,7 @@ def meld_dataloader(
     shuffle: bool = True,
     num_workers: int = 4,
     collate_fn=collate_fn,
+    pin_memory: bool = True,
 ) -> DataLoader:
     dataset = MeldDataset(csv_path=csv_path, video_dir=video_dir)
     return DataLoader(
@@ -146,6 +147,7 @@ def meld_dataloader(
         shuffle=shuffle,
         num_workers=num_workers,
         collate_fn=collate_fn,
+        pin_memory=pin_memory
     )
 
 
