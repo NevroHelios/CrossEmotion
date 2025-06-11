@@ -1,7 +1,7 @@
 # Cross-Dataset Emotion Recognition Benchmark (MELD vs IFEED)
 
 **Author**: NevroHelios 
-**Last Updated**: 09 June 2025
+**Last Updated**: 11 June 2025
 
 ## 🎯 Objective
 Compare video (MELD) and image (IFEED) emotion recognition performance through:
@@ -57,8 +57,8 @@ pip install -r requirements.txt
   - [ ] Benchmark on MELD (accuracy, F1, speed)
 
 - [ ] **IFEED (Images)**
-  - [ ] Dataloader for IFEED (170x140px images)
-  - [ ] Vision model class (ResNet-50 baseline, pretrained)
+  - [x] Dataloader for IFEED (170x140px images)
+  - [x] Vision model class (ResNet-50 baseline, pretrained)
   - [ ] Training & inference pipeline
   - [ ] Benchmark on IFEED37
 
