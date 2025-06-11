@@ -60,7 +60,8 @@ pip install -r requirements.txt
   - [ ] Dataloader for IFEED (170x140px images)
   - [ ] Vision model class (ResNet-50 baseline, pretrained)
   - [ ] Training & inference pipeline
-  - [ ] Benchmark on IFEED
+  - [ ] Benchmark on IFEED37
+
 
 - [ ] **Deployment**
   - [ ] Web demo using Gradio

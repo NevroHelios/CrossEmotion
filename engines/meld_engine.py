@@ -1,8 +1,8 @@
 import torch
 from torch import nn
 from typing import Optional
-from dataset_loader import meld_dataloader
-from models import MultimodalSentimentModel
+from datasets.meld_dataset import meld_dataloader
+from models.meld_model import MultimodalSentimentModel
 from tqdm import tqdm
 import os
 
@@ -22,15 +22,15 @@ class Engine:
               batch_size: int = 4,
               ) -> None:
         training_loader = meld_dataloader(
-            csv_path="../dataset/train/train_sent_emo.csv",
-            video_dir="../dataset/train/train_splits",
+            csv_path="data/meld/train/train_sent_emo.csv",
+            video_dir="data/meld/train/train_splits",
             batch_size=batch_size,
             shuffle=True,
             pin_memory=True,
         )
         test_loader = meld_dataloader(
-            csv_path="../dataset/test/test_sent_emo.csv",
-            video_dir="../dataset/test/output_repeated_splits",
+            csv_path="data/meld/test/test_sent_emo.csv",
+            video_dir="data/meld/test/output_repeated_splits",
             batch_size=batch_size,
             shuffle=False,
             pin_memory=True,
@@ -103,7 +103,7 @@ class Engine:
         return accuracy
 
     def _save_model(self,
-                    path: str = "models/model.pth") -> None:
+                    path: str = "saved_models/model.pth") -> None:
         """Save the model to the specified path."""
         if not os.path.exists(os.path.dirname(path)):
             os.makedirs(os.path.dirname(path), exist_ok=True)

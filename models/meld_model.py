@@ -127,7 +127,7 @@ class MultimodalSentimentModel(nn.Module):
 
 
 if __name__ == "__main__":
-    from dataset_loader import meld_dataloader
+    from datasets.meld_dataset import meld_dataloader
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     loader = meld_dataloader(

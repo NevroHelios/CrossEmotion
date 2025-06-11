@@ -160,8 +160,8 @@ if __name__ == "__main__":
     # sample = train_dataset[0]
     # print(sample)
     train_loader = meld_dataloader(
-        csv_path="../dataset/train/train_sent_emo.csv",
-        video_dir="../dataset/train/train_splits",
+        csv_path="data/meld/train/train_sent_emo.csv",
+        video_dir="data/meld/train/train_splits",
         batch_size=10,
         shuffle=True,
     )
