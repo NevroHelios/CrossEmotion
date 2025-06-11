@@ -3,6 +3,8 @@ import torch.nn as nn
 from torchvision import models as visoin_models
 from torchaudio import models as audio_models
 from transformers import BertModel
+import tqdm
+
 
 class TextEncoder(nn.Module):
     def __init__(self) -> None:
@@ -69,7 +71,7 @@ class AudioEncoder(nn.Module):
         inputs,  # input: (batch_size, num_frames, feature_dim)
         lengths,  # lengths: (batch_size, )
     ):
-        x, _  = self.conformer(inputs, lengths)
+        x, _ = self.conformer(inputs, lengths)
         x = x.mean(dim=1)
         x = self.fc(x)
         return x
@@ -77,17 +79,16 @@ class AudioEncoder(nn.Module):
 
 
 class MultimodalSentimentModel(nn.Module):
-    def __init__(self, ) -> None:
+    def __init__(
+        self,
+    ) -> None:
         super().__init__()
         self.text_encoder = TextEncoder()
         self.video_encoder = VideoEncoder()
         self.audio_encoder = AudioEncoder()
 
         self.fusion_layer = nn.Sequential(
-            nn.Linear(128*3, 256),
-            nn.BatchNorm1d(256),
-            nn.ReLU(),
-            nn.Dropout(0.3)
+            nn.Linear(128 * 3, 256), nn.BatchNorm1d(256), nn.ReLU(), nn.Dropout(0.3)
         )
 
         self.emo_clf = nn.Sequential(
@@ -95,7 +96,7 @@ class MultimodalSentimentModel(nn.Module):
             nn.ReLU(),
             nn.Dropout(0.3),
             nn.Linear(64, 7),  # 7 emotions
-            nn.Softmax(dim=1)
+            nn.Softmax(dim=1),
         )
 
         self.sent_clf = nn.Sequential(
@@ -103,7 +104,7 @@ class MultimodalSentimentModel(nn.Module):
             nn.ReLU(),
             nn.Dropout(0.3),
             nn.Linear(64, 3),  # 3 sentiments
-            nn.Softmax(dim=1)
+            nn.Softmax(dim=1),
         )
 
     def forward(self, text_inputs, video_frames, audio_features, audio_lengths):
@@ -113,7 +114,7 @@ class MultimodalSentimentModel(nn.Module):
         )
         video_features = self.video_encoder(video_frames)
         audio_features = self.audio_encoder(audio_features, audio_lengths)
-        
+
         combined_features = torch.cat(
             (text_features, video_features, audio_features), dim=1
         )
@@ -132,48 +133,49 @@ if __name__ == "__main__":
     loader = meld_dataloader(
         csv_path="../dataset/train/train_sent_emo.csv",
         video_dir="../dataset/train/train_splits",
-        batch_size=4,
+        batch_size=10,
         shuffle=True,
     )
     data = next(iter(loader))
-    text_enc = data["text_inputs"]
-    print(
-        text_enc["input_ids"].shape, text_enc["attention_mask"].shape
-    )  # (batch_size, seq_len)
+    for data in tqdm.tqdm(loader):
+        text_enc = data["text_inputs"]
+        # print(
+        #     text_enc["input_ids"].shape, text_enc["attention_mask"].shape
+        # )  # (batch_size, seq_len)
 
-    with torch.no_grad():
-        # text_model = TextEncoder().to(device)
-        # y = text_model(
-        #     input_ids=text_enc["input_ids"].to(device),
-        #     attention_mask=text_enc["attention_mask"].to(device),
-        # )
-        # print(y.shape)  # (batch_size, 128)
+        with torch.autocast("cuda"):
+            # text_model = TextEncoder().to(device)
+            # y = text_model(
+            #     input_ids=text_enc["input_ids"].to(device),
+            #     attention_mask=text_enc["attention_mask"].to(device),
+            # )
+            # print(y.shape)  # (batch_size, 128)
 
-        # video_model = VideoEncoder().to(device)
-        # video_frames = data["video_frames"].to(
-        #     device
-        # )  # (batch_size, frames, channels, H, W)
-        # video_features = video_model(video_frames)
-        # print(video_features.shape)
+            # video_model = VideoEncoder().to(device)
+            # video_frames = data["video_frames"].to(
+            #     device
+            # )  # (batch_size, frames, channels, H, W)
+            # video_features = video_model(video_frames)
+            # print(video_features.shape)
 
-        # audio_model = AudioEncoder().to(device)
-        audio_features = data["audio_features"].to(device)
-        audio_features = audio_features.transpose(1, 2)
-        audio_lengths = torch.tensor(
-            [audio_features.shape[1]] * audio_features.shape[0], device=device
-        )
-        # audio_features = audio_model(audio_features, audio_lengths)
-        # print(audio_features.shape)
-        multimodal_model = MultimodalSentimentModel().to(device)
-        text_enc = {
-            "input_ids": text_enc["input_ids"].to(device),
-            "attention_mask": text_enc["attention_mask"].to(device),
-        }
-        emo_logits, sent_logits = multimodal_model(
-            text_inputs=text_enc,
-            video_frames=data["video_frames"].to(device),
-            audio_features=audio_features,
-            audio_lengths=audio_lengths,
-        )
-        print(emo_logits.shape)
-        print(sent_logits.shape)
+            # audio_model = AudioEncoder().to(device)
+            audio_features = data["audio_features"].to(device)
+            audio_features = audio_features.transpose(1, 2)
+            audio_lengths = torch.tensor(
+                [audio_features.shape[1]] * audio_features.shape[0], device=device
+            )
+            # audio_features = audio_model(audio_features, audio_lengths)
+            # print(audio_features.shape)
+            multimodal_model = MultimodalSentimentModel().to(device)
+            text_enc = {
+                "input_ids": text_enc["input_ids"].to(device),
+                "attention_mask": text_enc["attention_mask"].to(device),
+            }
+            emo_logits, sent_logits = multimodal_model(
+                text_inputs=text_enc,
+                video_frames=data["video_frames"].to(device),
+                audio_features=audio_features,
+                audio_lengths=audio_lengths,
+            )
+            # print(emo_logits.shape)
+            # print(sent_logits.shape)

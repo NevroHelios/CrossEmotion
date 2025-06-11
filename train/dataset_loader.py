@@ -88,43 +88,46 @@ class MeldDataset(Dataset):
         return len(self.df)
 
     def __getitem__(self, index: int | torch.Tensor) -> Optional[Dict[str, Any]]:
-        if isinstance(index, torch.Tensor):
-            index = int(index.item())
-        if index < 0 or index >= len(self.df):
-            raise IndexError(f"Index {index} out of range for dataset of size {len(self.df)}")
+        try:
+            if isinstance(index, torch.Tensor):
+                index = int(index.item())
+            if index < 0 or index >= len(self.df):
+                raise IndexError(f"Index {index} out of range for dataset of size {len(self.df)}")
 
-        dia_id = self.df.iloc[index]["Dialogue_ID"]
-        utt_id = self.df.iloc[index]["Utterance_ID"]
-        video_path = os.path.join(self.video_dir, f"dia{dia_id}_utt{utt_id}.mp4")
+            dia_id = self.df.iloc[index]["Dialogue_ID"]
+            utt_id = self.df.iloc[index]["Utterance_ID"]
+            video_path = os.path.join(self.video_dir, f"dia{dia_id}_utt{utt_id}.mp4")
 
-        if not os.path.exists(video_path):
-            raise FileNotFoundError(f"Video file {video_path} does not exist.")
+            if not os.path.exists(video_path):
+                raise FileNotFoundError(f"Video file {video_path} does not exist.")
 
-        input_tokens = self.transformer(
-            self.df.iloc[index]["Utterance"],
-            padding="max_length",
-            truncation=True,
-            max_length=128,
-            return_tensors="pt",
-        )
+            input_tokens = self.transformer(
+                self.df.iloc[index]["Utterance"],
+                padding="max_length",
+                truncation=True,
+                max_length=128,
+                return_tensors="pt",
+            )
 
-        video_frames = self._read_video_frames(video_path)
-        audio_features = self._extract_audio_features(video_path)
+            video_frames = self._read_video_frames(video_path)
+            audio_features = self._extract_audio_features(video_path)
 
-        # return input_tokens, audio_features, video_frames, self.df.iloc[index]["Emotion"], self.df.iloc[index]["Sentiment"]
-        return {
-            "text_inputs": {
-                "input_ids": input_tokens["input_ids"].squeeze(0),
-                "attention_mask": input_tokens["attention_mask"].squeeze(0),
-            },
-            "audio_features": audio_features.squeeze(
-                0
-            ),  # (1, 64, 300) -> (64, 300)
-            "video_frames": video_frames,  # (60, 3, H, W)
-            "emotion": self.df.iloc[index]["Emotion"],
-            "sentiment": self.df.iloc[index]["Sentiment"],
-        }
-
+            # return input_tokens, audio_features, video_frames, self.df.iloc[index]["Emotion"], self.df.iloc[index]["Sentiment"]
+            return {
+                "text_inputs": {
+                    "input_ids": input_tokens["input_ids"].squeeze(0),
+                    "attention_mask": input_tokens["attention_mask"].squeeze(0),
+                },
+                "audio_features": audio_features.squeeze(
+                    0
+                ),  # (1, 64, 300) -> (64, 300)
+                "video_frames": video_frames,  # (60, 3, H, W)
+                "emotion": self.df.iloc[index]["Emotion"],
+                "sentiment": self.df.iloc[index]["Sentiment"],
+            }
+        except Exception as e:
+            print(f"Error processing index {index}: {e}")
+            return None
 
 def collate_fn(batch):
     batch = list(filter(None, batch))
@@ -147,7 +150,7 @@ def meld_dataloader(
         shuffle=shuffle,
         num_workers=num_workers,
         collate_fn=collate_fn,
-        pin_memory=pin_memory
+        pin_memory=pin_memory,
     )
 
 
