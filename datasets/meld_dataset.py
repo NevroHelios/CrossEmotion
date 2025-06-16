@@ -10,6 +10,7 @@ import torchaudio
 from torch.utils.data import DataLoader, Dataset
 from transformers import AutoTokenizer
 
+VIDEO_BACKEND = "ffmpeg" # "cuda" 
 
 class MeldDataset(Dataset):
     def __init__(self, csv_path: str, video_dir: str) -> None:
@@ -63,7 +64,7 @@ class MeldDataset(Dataset):
         return torch.stack(frames).permute(0, 3, 1, 2)  # -> (60, 3, H, W) format
 
     def _extract_audio_features(self, video_path: str):
-        wave, sr = torchaudio.load(video_path, backend="ffmpeg")
+        wave, sr = torchaudio.load(video_path, backend=VIDEO_BACKEND)
         if sr != 16000:
             wave = torchaudio.transforms.Resample(orig_freq=sr, new_freq=16000)(wave)
         wave = wave[0]  # using the first channel only
@@ -166,6 +167,7 @@ if __name__ == "__main__":
         shuffle=True,
     )
     for batch in train_loader:
+        batch["text_inputs"]["input_ids"].to("cuda")
         print("text_inputs:", batch["text_inputs"]["input_ids"].shape)  # (batch_size, 128)
         print("audio_features:", batch["audio_features"].shape)  # (batch_size, 64, 300)
         print("video_frames:", batch["video_frames"].shape)  # (batch_size, 60, 3, H, W)
