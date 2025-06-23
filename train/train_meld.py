@@ -20,8 +20,8 @@ def main():
         drop_last=True,
     )
     test_loader = meld_dataloader(
-        csv_path="data/MELD/test/test_sent_emo.csv",
-        video_dir="data/MELD/test/output_repeated_splits",
+        csv_path="data/MELD/dev/dev_sent_emo.csv",
+        video_dir="data/MELD/dev/dev_splits_complete",
         batch_size=BATCH_SIZE,
         shuffle=False,
         pin_memory=True,

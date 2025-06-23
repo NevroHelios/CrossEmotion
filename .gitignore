@@ -4,3 +4,4 @@ __pycache__
 train/saved_models/
 temp.py
 runs/
+saved_models/

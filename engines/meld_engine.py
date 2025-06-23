@@ -3,7 +3,7 @@ from typing import Dict, Tuple
 
 import torch
 from torch import nn
-from torch.utils.tensorboard import SummaryWriter
+from torch.utils.tensorboard import SummaryWriter # type: ignore
 from tqdm import tqdm
 
 from datasets.meld_dataset import meld_dataloader
@@ -48,10 +48,12 @@ class Engine:
             "test_sent_accuracy": [],
         }
         best_loss = float("inf")
+        device_type = "cuda" if self.device.type == "cuda" else "cpu"
         for epoch in tqdm(range(num_epochs)):
             train_loss, train_emo_accuracy, train_sent_accuracy = self._train_step(
                 dataloader=train_dataloader,
                 optimizer=optimizer,
+                device_type=device_type,
             )
 
             test_loss, test_emo_accuracy, test_sent_accuracy = self._test_step(
@@ -70,7 +72,7 @@ class Engine:
             self.results["test_emo_accuracy"].append(test_emo_accuracy)
             self.results["test_sent_accuracy"].append(test_sent_accuracy)
 
-            self._log_results(self.results)
+            self._log_results(self.results, epoch=epoch)
 
             if scheduler:
                 scheduler.step()
@@ -79,13 +81,14 @@ class Engine:
 
         return self.results
 
-    def _log_results(self, results: dict) -> None:
+    def _log_results(self, results: dict, epoch: int) -> None:
         self.writer.add_scalars(
             main_tag="Loss",
             tag_scalar_dict={
                 "Train Loss": results["train_loss"][-1],
                 "Test Loss": results["test_loss"][-1],
             },
+            global_step=epoch,
         )
         self.writer.add_scalars(
             main_tag="Emotion Accuracy",
@@ -93,6 +96,7 @@ class Engine:
                 "Train Emo Accuracy": results["train_emo_accuracy"][-1],
                 "Test Emo Accuracy": results["test_emo_accuracy"][-1],
             },
+            global_step=epoch,
         )
         self.writer.add_scalars(
             main_tag="Sentiment Accuracy",
@@ -100,6 +104,7 @@ class Engine:
                 "Train Sent Accuracy": results["train_sent_accuracy"][-1],
                 "Test Sent Accuracy": results["test_sent_accuracy"][-1],
             },
+            global_step=epoch,
         )
 
     def _test_step(
@@ -107,13 +112,18 @@ class Engine:
     ) -> Tuple[float, float, float]:
         self.model.eval()
         running_loss: float = 0.0
-        emo_accuracy: float = 0.0
-        sent_accuracy: float = 0.0
+        emo_correct: float = 0.0
+        sent_correct: float = 0.0
+        total_samples: int = 0
 
         with torch.no_grad():
             for batch in dataloader:
                 if batch is None:
+                    print("Skipping empty test batch")
                     continue
+                batch_size = batch["text_inputs"]["input_ids"].shape[0]
+                total_samples += batch_size
+
                 text_enc = batch["text_inputs"]
                 text_enc = {
                     "input_ids": text_enc["input_ids"].to(self.device),
@@ -143,15 +153,17 @@ class Engine:
 
                 emo_loss = nn.CrossEntropyLoss()(emo_logits, emo_labels)
                 sent_loss = nn.CrossEntropyLoss()(sent_logits, sent_labels)
+
                 loss = emo_loss + sent_loss
-                running_loss += loss.item()
+                running_loss += loss.item() * batch_size
                 emo_preds = emo_logits.argmax(dim=1)
                 sent_preds = sent_logits.argmax(dim=1)
-                emo_accuracy += self.evaluate(emo_labels, emo_preds)
-                sent_accuracy += self.evaluate(sent_labels, sent_preds)
-        avg_loss = running_loss / len(dataloader)
-        avg_emo_accuracy = emo_accuracy / len(dataloader)
-        avg_sent_accuracy = sent_accuracy / len(dataloader)
+                emo_correct += (emo_preds == emo_labels).sum().item()
+                sent_correct += (sent_preds == sent_labels).sum().item()
+
+        avg_loss = running_loss / total_samples if total_samples > 0 else 0.0
+        avg_emo_accuracy = emo_correct / total_samples if total_samples > 0 else 0.0
+        avg_sent_accuracy = sent_correct / total_samples if total_samples > 0 else 0.0
         print(
             f"Test Loss: {avg_loss:.4f}, Emo Accuracy: {avg_emo_accuracy:.4f}, Sent Accuracy: {avg_sent_accuracy:.4f}"
         )
@@ -161,64 +173,74 @@ class Engine:
         self,
         dataloader: torch.utils.data.DataLoader,
         optimizer: torch.optim.Optimizer,
+        device_type: str = "cuda",
     ) -> Tuple[float, float, float]:
         """a single training step for the model.
 
         Return:
         avg_loss, avg_emo_accuracy, avg_sent_accuracy"""
         self.model.train()
-        step_loss: float = 0.0
-        sent_accuracy: float = 0.0
-        emo_accuracy: float = 0.0
-        with torch.autocast(device_type=self.device.type, enabled=True):
-            for batch in tqdm(dataloader):
-                if batch is None:
-                    continue
-                # text
-                text_enc = batch["text_inputs"]
-                text_enc = {
-                    "input_ids": text_enc["input_ids"].to(self.device),
-                    "attention_mask": text_enc["attention_mask"].to(self.device),
-                }
-                # video
-                video_frames = batch["video_frames"].to(
-                    self.device
-                )  # (batch_size, frames, channels, H, W)
-                # audio
-                audio_features = batch["audio_features"].to(self.device)
-                audio_features = audio_features.transpose(1, 2)
-                audio_lengths = torch.tensor(
-                    [audio_features.shape[1]] * audio_features.shape[0],
-                    device=self.device,
-                )
+        running_loss: float = 0.0
+        sent_correct: float = 0.0
+        emo_correct: float = 0.0
+        total_samples: int = 0
 
-                emo_labels = batch["emotion"].to(self.device)
-                sent_labels = batch["sentiment"].to(self.device)
+        # with torch.autocast(device_type=device_type, enabled=True):
+        for batch in dataloader:
+            if batch is None:
+                print("Skipping empty train batch")
+                continue
+            batch_size = batch["text_inputs"]["input_ids"].shape[0]
+            total_samples += batch_size
 
-                emo_logits, sent_logits = self.model(
-                    text_inputs=text_enc,
-                    video_frames=video_frames,
-                    audio_features=audio_features,
-                    audio_lengths=audio_lengths,
-                )
+            # text
+            text_enc = batch["text_inputs"]
+            text_enc = {
+                "input_ids": text_enc["input_ids"].to(self.device),
+                "attention_mask": text_enc["attention_mask"].to(self.device),
+            }
+            # video
+            video_frames = batch["video_frames"].to(
+                self.device
+            )  # (batch_size, frames, channels, H, W)
+            # audio
+            audio_features = batch["audio_features"].to(self.device)
+            audio_features = audio_features.transpose(1, 2)
+            audio_lengths = torch.tensor(
+                [audio_features.shape[1]] * audio_features.shape[0],
+                device=self.device,
+            )
 
-                emo_loss = nn.CrossEntropyLoss()(emo_logits, emo_labels)
-                sent_loss = nn.CrossEntropyLoss()(sent_logits, sent_labels)
-                loss = emo_loss + sent_loss
+            emo_labels = batch["emotion"].to(self.device)
+            sent_labels = batch["sentiment"].to(self.device)
 
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
+            emo_logits, sent_logits = self.model(
+                text_inputs=text_enc,
+                video_frames=video_frames,
+                audio_features=audio_features,
+                audio_lengths=audio_lengths,
+            )
 
-                step_loss += loss.item()
-                emo_preds = emo_logits.argmax(dim=1)
-                sent_preds = sent_logits.argmax(dim=1)
-                emo_accuracy += self.evaluate(emo_labels, emo_preds)
-                sent_accuracy += self.evaluate(sent_labels, sent_preds)
+            emo_loss = nn.CrossEntropyLoss()(emo_logits, emo_labels)
+            sent_loss = nn.CrossEntropyLoss()(sent_logits, sent_labels)
+            loss = emo_loss + sent_loss
 
-        avg_loss = step_loss / len(dataloader)
-        avg_emo_accuracy = emo_accuracy / len(dataloader)
-        avg_sent_accuracy = sent_accuracy / len(dataloader)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            running_loss += loss.item() * batch_size
+            emo_preds = emo_logits.argmax(dim=1)
+            sent_preds = sent_logits.argmax(dim=1)
+            emo_correct += (emo_preds == emo_labels).sum().item()
+            sent_correct += (sent_preds == sent_labels).sum().item()
+
+        avg_loss = running_loss / total_samples if total_samples > 0 else 0.0
+        avg_emo_accuracy = emo_correct / total_samples if total_samples > 0 else 0.0
+        avg_sent_accuracy = sent_correct / total_samples if total_samples > 0 else 0.0
+        print(
+            f"Train Loss: {avg_loss:.4f}, Emo Accuracy: {avg_emo_accuracy:.4f}, Sent Accuracy: {avg_sent_accuracy:.4f}"
+        )
         return avg_loss, avg_emo_accuracy, avg_sent_accuracy
 
     def evaluate(self, y_true, y_pred):

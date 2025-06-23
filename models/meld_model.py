@@ -97,7 +97,6 @@ class MultimodalSentimentModel(nn.Module):
             nn.ReLU(),
             nn.Dropout(0.3),
             nn.Linear(64, 7),  # 7 emotions
-            nn.Softmax(dim=1),
         )
 
         self.sent_clf = nn.Sequential(
@@ -105,7 +104,6 @@ class MultimodalSentimentModel(nn.Module):
             nn.ReLU(),
             nn.Dropout(0.3),
             nn.Linear(64, 3),  # 3 sentiments
-            nn.Softmax(dim=1),
         )
 
     def forward(self, text_inputs, video_frames, audio_features, audio_lengths):
