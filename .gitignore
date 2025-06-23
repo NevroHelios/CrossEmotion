@@ -3,3 +3,4 @@ data
 __pycache__
 train/saved_models/
 temp.py
+runs/

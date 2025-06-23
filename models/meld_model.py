@@ -4,6 +4,7 @@ from torchvision import models as visoin_models
 from torchaudio import models as audio_models
 from transformers import BertModel
 import tqdm
+# from torchaudio.pipelines import VOXPOPULI_ASR_BASE_10K_ES
 
 
 class TextEncoder(nn.Module):
@@ -54,11 +55,11 @@ class AudioEncoder(nn.Module):
             input_dim=64,
             num_heads=8,
             ffn_dim=1024,
-            num_layers=12,
+            num_layers=6,
             depthwise_conv_kernel_size=31,
         )
-        for param in self.conformer.parameters():
-            param.requires_grad = False
+        # for param in self.conformer.parameters():
+        #     param.requires_grad = False
 
         self.fc = nn.Sequential(
             nn.Linear(64, 128),
@@ -88,7 +89,7 @@ class MultimodalSentimentModel(nn.Module):
         self.audio_encoder = AudioEncoder()
 
         self.fusion_layer = nn.Sequential(
-            nn.Linear(128 * 3, 256), nn.BatchNorm1d(256), nn.ReLU(), nn.Dropout(0.3)
+            nn.Linear(128 * 3, 256), nn.LayerNorm(256), nn.ReLU(), nn.Dropout(0.3)
         )
 
         self.emo_clf = nn.Sequential(
@@ -131,12 +132,13 @@ if __name__ == "__main__":
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     loader = meld_dataloader(
-        csv_path="../dataset/train/train_sent_emo.csv",
-        video_dir="../dataset/train/train_splits",
+        csv_path="data/MELD/train/train_sent_emo.csv",
+        video_dir="data/MELD/train/train_splits",
         batch_size=10,
         shuffle=True,
     )
     data = next(iter(loader))
+    multimodal_model = MultimodalSentimentModel().to(device)
     for data in tqdm.tqdm(loader):
         text_enc = data["text_inputs"]
         # print(
@@ -166,7 +168,6 @@ if __name__ == "__main__":
             )
             # audio_features = audio_model(audio_features, audio_lengths)
             # print(audio_features.shape)
-            multimodal_model = MultimodalSentimentModel().to(device)
             text_enc = {
                 "input_ids": text_enc["input_ids"].to(device),
                 "attention_mask": text_enc["attention_mask"].to(device),

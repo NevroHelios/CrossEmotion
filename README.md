@@ -45,7 +45,7 @@ pip install -r requirements.txt
   - [x] Dataloader for MELD (video & text)
   - [x] Vision model class (pretrained `rd3_18`)
   - [x] Text model class (pretrained `bert`)
-  - [x] Audio model class (pretrained)
+  - [ ] Audio model class (Conformer, non-pretrained)
   - [x] Multimodal dataloader (combine modalities)
   - [x] FusionModel (text + audio + video)
       - [x] Integrate vision encoder (`1r3d-18`)
@@ -72,4 +72,4 @@ pip install -r requirements.txt
 |--------|-------------|--------------|
 | Accuracy | 72% | 85% |
 | F1-Score | 0.71 | 0.87 |
-| Inference Speed |  **Note**: Dataset licenses 
+| Inference Speed |  **Note**: Dataset licenses
