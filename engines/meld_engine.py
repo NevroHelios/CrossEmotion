@@ -1,9 +1,9 @@
 import os
-from typing import Dict, Tuple 
+from typing import Dict, Tuple
 
 import torch
 from torch import nn
-from torch.utils.tensorboard import SummaryWriter # type: ignore
+from torch.utils.tensorboard import SummaryWriter  # type: ignore
 from tqdm import tqdm
 
 from datasets.meld_dataset import meld_dataloader
@@ -26,15 +26,14 @@ class Engine:
         self,
         train_dataloader: torch.utils.data.DataLoader,
         test_dataloader: torch.utils.data.DataLoader,
-        optimizer= None,
+        optimizer=None,
         learning_rate: float = 1e-4,
-        scheduler = None,
+        scheduler=None,
         num_epochs: int = 10,
-        batch_size: int = 4,
+        verbose: bool = True,
     ) -> Dict:
         """Default training method for the MELD dataset.
         and using Adam optimizer with a learning rate of 1e-4."""
-
 
         if optimizer is None:
             optimizer = torch.optim.Adam(self.model.parameters(), lr=learning_rate)
@@ -53,11 +52,11 @@ class Engine:
             train_loss, train_emo_accuracy, train_sent_accuracy = self._train_step(
                 dataloader=train_dataloader,
                 optimizer=optimizer,
-                device_type=device_type,
+                verbose=verbose,
             )
 
             test_loss, test_emo_accuracy, test_sent_accuracy = self._test_step(
-                dataloader=test_dataloader
+                dataloader=test_dataloader, verbose=verbose
             )
 
             self.results["train_loss"].append(train_loss)
@@ -107,8 +106,18 @@ class Engine:
             global_step=epoch,
         )
 
-    def _test_step(
+    def test(
         self, dataloader: torch.utils.data.DataLoader
+    ) -> Tuple[float, float, float]:
+        """Test the model on the provided dataloader and return average loss and accuracy (emo, sent)."""
+        avg_loss, avg_emo_accuracy, avg_sent_accuracy = self._test_step(dataloader)
+        print(
+            f"Test Loss: {avg_loss:.4f}, Emo Accuracy: {avg_emo_accuracy:.4f}, Sent Accuracy: {avg_sent_accuracy:.4f}"
+        )
+        return avg_loss, avg_emo_accuracy, avg_sent_accuracy
+
+    def _test_step(
+        self, dataloader: torch.utils.data.DataLoader, verbose: bool = True
     ) -> Tuple[float, float, float]:
         self.model.eval()
         running_loss: float = 0.0
@@ -117,9 +126,10 @@ class Engine:
         total_samples: int = 0
 
         with torch.no_grad():
-            for batch in dataloader:
+            for batch in tqdm(dataloader):
                 if batch is None:
-                    print("Skipping empty test batch")
+                    if verbose:
+                        print("Skipping empty test batch")
                     continue
                 batch_size = batch["text_inputs"]["input_ids"].shape[0]
                 total_samples += batch_size
@@ -164,16 +174,17 @@ class Engine:
         avg_loss = running_loss / total_samples if total_samples > 0 else 0.0
         avg_emo_accuracy = emo_correct / total_samples if total_samples > 0 else 0.0
         avg_sent_accuracy = sent_correct / total_samples if total_samples > 0 else 0.0
-        print(
-            f"Test Loss: {avg_loss:.4f}, Emo Accuracy: {avg_emo_accuracy:.4f}, Sent Accuracy: {avg_sent_accuracy:.4f}"
-        )
+        if verbose:
+            print(
+                f"\n\nTest Loss: {avg_loss:.4f}, Emo Accuracy: {avg_emo_accuracy:.4f}, Sent Accuracy: {avg_sent_accuracy:.4f}"
+            )
         return avg_loss, avg_emo_accuracy, avg_sent_accuracy
 
     def _train_step(
         self,
         dataloader: torch.utils.data.DataLoader,
         optimizer: torch.optim.Optimizer,
-        device_type: str = "cuda",
+        verbose: bool = True,
     ) -> Tuple[float, float, float]:
         """a single training step for the model.
 
@@ -186,9 +197,10 @@ class Engine:
         total_samples: int = 0
 
         # with torch.autocast(device_type=device_type, enabled=True):
-        for batch in dataloader:
+        for batch in tqdm(dataloader):
             if batch is None:
-                print("Skipping empty train batch")
+                if verbose:
+                    print("Skipping empty train batch")
                 continue
             batch_size = batch["text_inputs"]["input_ids"].shape[0]
             total_samples += batch_size
@@ -238,9 +250,10 @@ class Engine:
         avg_loss = running_loss / total_samples if total_samples > 0 else 0.0
         avg_emo_accuracy = emo_correct / total_samples if total_samples > 0 else 0.0
         avg_sent_accuracy = sent_correct / total_samples if total_samples > 0 else 0.0
-        print(
-            f"Train Loss: {avg_loss:.4f}, Emo Accuracy: {avg_emo_accuracy:.4f}, Sent Accuracy: {avg_sent_accuracy:.4f}"
-        )
+        if verbose:
+            print(
+                f"\n\nTrain Loss: {avg_loss:.4f}, Emo Accuracy: {avg_emo_accuracy:.4f}, Sent Accuracy: {avg_sent_accuracy:.4f}"
+            )
         return avg_loss, avg_emo_accuracy, avg_sent_accuracy
 
     def evaluate(self, y_true, y_pred):
@@ -259,26 +272,24 @@ if __name__ == "__main__":
     engine = Engine(device=device)
     batch_size = 8
     training_loader = meld_dataloader(
-            csv_path="data/MELD/train/train_sent_emo.csv",
-            video_dir="data/MELD/train/train_splits",
-            batch_size=batch_size,
-            shuffle=True,
-            pin_memory=True,
-            drop_last=True,
-        )
+        csv_path="data/MELD/train/train_sent_emo.csv",
+        video_dir="data/MELD/train/train_splits",
+        batch_size=batch_size,
+        shuffle=True,
+        pin_memory=True,
+        drop_last=True,
+    )
     test_loader = meld_dataloader(
         csv_path="data/MELD/test/test_sent_emo.csv",
         video_dir="data/MELD/test/output_repeated_splits",
         batch_size=batch_size,
         shuffle=False,
         pin_memory=True,
-        drop_last=True
+        drop_last=True,
     )
     engine.train(
         train_dataloader=training_loader,
         test_dataloader=test_loader,
         optimizer=torch.optim.Adam(engine.model.parameters(), lr=1e-4),
         num_epochs=10,
-        batch_size=8,
     )
- 

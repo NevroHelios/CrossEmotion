@@ -1,12 +1,13 @@
 from sagemaker.pytorch.estimator import PyTorch
 from sagemaker.debugger.debugger import TensorBoardOutputConfig
 
-#TODO: gotta update the bucket name and paths to s3
+# TODO: gotta update the bucket name and paths to s3
+
 
 def start_training():
     tensorboard_config = TensorBoardOutputConfig(
         s3_output_path="bucket-name/tensorboard",
-        container_local_output_path="/opt/ml/output/tensorboard"
+        container_local_output_path="/opt/ml/output/tensorboard",
     )
 
     estimator = PyTorch(
@@ -21,13 +22,15 @@ def start_training():
             "epochs": "10",
             "batch-size": "32",
         },
-        tensorboard_config=tensorboard_config
+        tensorboard_config=tensorboard_config,
     )
 
     estimator.fit(
-        {"training": "s3://bucket-name/data/train",
-         "validation": "s3://bucket-name/data/val",
-         "test": "s3://bucket-name/data/test"},
+        {
+            "training": "s3://bucket-name/data/train",
+            "validation": "s3://bucket-name/data/val",
+            "test": "s3://bucket-name/data/test",
+        },
     )
 
 
