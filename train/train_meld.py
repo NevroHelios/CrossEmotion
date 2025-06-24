@@ -14,22 +14,52 @@ BATCH_SIZE = 10
 
 #  aws sagemaker configs
 SM_MODEL_DIR = "/opt/ml/model"
-SM_CHANNEL_TRAINING = os.environ.get("SM_CHANNEL_TRAINING", "/opt/ml/input/data/training")
-SM_CHANNEL_VALIDATION = os.environ.get("SM_CHANNEL_VALIDATION", "/opt/ml/input/data/validation")
+SM_CHANNEL_TRAINING = os.environ.get(
+    "SM_CHANNEL_TRAINING", "/opt/ml/input/data/training"
+)
+SM_CHANNEL_VALIDATION = os.environ.get(
+    "SM_CHANNEL_VALIDATION", "/opt/ml/input/data/validation"
+)
 SM_CHANNEL_TEST = os.environ.get("SM_CHANNEL_TEST", "/opt/ml/input/data/test")
 
-os.environ['PYTORCH_CUDA_ALLOC_CONF'] = 'expandable_segments:True'
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Train MELD model")
-    parser.add_argument("--epochs", type=int, default=EPOCHS, help="Number of training epochs")
-    parser.add_argument("--batch-size", type=int, default=BATCH_SIZE, help="Batch size for training")
-    parser.add_argument("--train-dir", type=str, default=SM_CHANNEL_TRAINING, help="Directory for training data")
-    parser.add_argument("--validation-dir", type=str, default=SM_CHANNEL_VALIDATION, help="Directory for validation data")
-    parser.add_argument("--test-dir", type=str, default=SM_CHANNEL_TEST, help="Directory for test data")
-    parser.add_argument("--model-dir", type=str, default=SM_MODEL_DIR, help="Directory to save the model")
-    parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu", help="Device to use for training (cuda or cpu)")
+    parser.add_argument(
+        "--epochs", type=int, default=EPOCHS, help="Number of training epochs"
+    )
+    parser.add_argument(
+        "--batch-size", type=int, default=BATCH_SIZE, help="Batch size for training"
+    )
+    parser.add_argument(
+        "--train-dir",
+        type=str,
+        default=SM_CHANNEL_TRAINING,
+        help="Directory for training data",
+    )
+    parser.add_argument(
+        "--validation-dir",
+        type=str,
+        default=SM_CHANNEL_VALIDATION,
+        help="Directory for validation data",
+    )
+    parser.add_argument(
+        "--test-dir", type=str, default=SM_CHANNEL_TEST, help="Directory for test data"
+    )
+    parser.add_argument(
+        "--model-dir",
+        type=str,
+        default=SM_MODEL_DIR,
+        help="Directory to save the model",
+    )
+    parser.add_argument(
+        "--device",
+        type=str,
+        default="cuda" if torch.cuda.is_available() else "cpu",
+        help="Device to use for training (cuda or cpu)",
+    )
     return parser.parse_args()
 
 
@@ -38,7 +68,7 @@ def main():
     install_ffmpeg()  # Ensure FFmpeg is installed
 
     audio_backends = torchaudio.get_audio_backend()
-    if audio_backends and 'ffmpeg' not in audio_backends:
+    if audio_backends and "ffmpeg" not in audio_backends:
         print("FFmpeg is not available. Please install FFmpeg to process audio files.")
         sys.exit(69)
 
@@ -46,11 +76,10 @@ def main():
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    if device.type == 'cuda':
+    if device.type == "cuda":
         print(f"Using CUDA device: {torch.cuda.get_device_name(0)}")
-        memory_allocated = torch.cuda.memory_allocated(0) / (1024 ** 2)  # in mb
+        memory_allocated = torch.cuda.memory_allocated(0) / (1024**2)  # in mb
         print(f"Memory allocated on CUDA device: {memory_allocated:.2f} MB")
-
 
     engine = Engine(device=device)
     optimizer = torch.optim.Adam(engine.model.parameters(), lr=1e-4)
@@ -69,7 +98,7 @@ def main():
         batch_size=BATCH_SIZE,
         shuffle=False,
         pin_memory=True,
-        drop_last=True
+        drop_last=True,
     )
 
     test_loader = meld_dataloader(
@@ -78,7 +107,7 @@ def main():
         batch_size=BATCH_SIZE,
         shuffle=False,
         pin_memory=True,
-        drop_last=True
+        drop_last=True,
     )
 
     results = engine.train(
@@ -87,7 +116,7 @@ def main():
         optimizer=optimizer,
         num_epochs=EPOCHS,
         batch_size=BATCH_SIZE,
-        scheduler=scheduler
+        scheduler=scheduler,
     )
 
     print("Training completed.")
@@ -100,4 +129,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    

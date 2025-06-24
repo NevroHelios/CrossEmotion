@@ -161,7 +161,7 @@ def meld_dataloader(
         num_workers=num_workers,
         collate_fn=collate_fn,
         pin_memory=pin_memory,
-        drop_last=drop_last
+        drop_last=drop_last,
     )
 
 
