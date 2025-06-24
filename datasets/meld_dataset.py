@@ -16,7 +16,7 @@ VIDEO_BACKEND = "ffmpeg"  # "cuda"
 class MeldDataset(Dataset):
     def __init__(self, csv_path: str, video_dir: str) -> None:
         super().__init__()
-        self.df = pd.read_csv(csv_path)
+        self.df = pd.read_csv(csv_path).sample(frac=0.1)
         self.video_dir = Path(video_dir)
         self.transformer = AutoTokenizer.from_pretrained("bert-base-uncased")
 

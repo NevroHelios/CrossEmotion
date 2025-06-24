@@ -3,3 +3,6 @@ torchvision
 torchaudio
 opencv-python
 pandas
+sagemaker
+tensorboard
+transformers

@@ -9,7 +9,7 @@ from datasets.meld_dataset import meld_dataloader
 from setup.install_ffmpeg import install_ffmpeg
 
 EPOCHS = 10
-BATCH_SIZE = 8
+BATCH_SIZE = 10
 
 
 #  aws sagemaker configs
@@ -91,7 +91,12 @@ def main():
     )
 
     print("Training completed.")
-    print("Results:", results)
+    print("Train Results:", results)
+
+    print("Beginning evaluation on test set...")
+    test_results = engine.test(test_loader)
+
+    print("Test Results:", test_results)
 
 if __name__ == "__main__":
     main()

@@ -31,6 +31,7 @@ class Engine:
         scheduler = None,
         num_epochs: int = 10,
         batch_size: int = 4,
+        verbose: bool = True
     ) -> Dict:
         """Default training method for the MELD dataset.
         and using Adam optimizer with a learning rate of 1e-4."""
@@ -54,10 +55,12 @@ class Engine:
                 dataloader=train_dataloader,
                 optimizer=optimizer,
                 device_type=device_type,
+                verbose=verbose
             )
 
             test_loss, test_emo_accuracy, test_sent_accuracy = self._test_step(
-                dataloader=test_dataloader
+                dataloader=test_dataloader,
+                verbose=verbose
             )
 
             self.results["train_loss"].append(train_loss)
@@ -107,8 +110,14 @@ class Engine:
             global_step=epoch,
         )
 
+    def test(self, dataloader: torch.utils.data.DataLoader) -> Tuple[float, float, float]:
+        """Test the model on the provided dataloader and return average loss and accuracy (emo, sent)."""
+        avg_loss, avg_emo_accuracy, avg_sent_accuracy = self._test_step(dataloader)
+        print(f"Test Loss: {avg_loss:.4f}, Emo Accuracy: {avg_emo_accuracy:.4f}, Sent Accuracy: {avg_sent_accuracy:.4f}")
+        return avg_loss, avg_emo_accuracy, avg_sent_accuracy
+
     def _test_step(
-        self, dataloader: torch.utils.data.DataLoader
+        self, dataloader: torch.utils.data.DataLoader, verbose: bool = True
     ) -> Tuple[float, float, float]:
         self.model.eval()
         running_loss: float = 0.0
@@ -117,9 +126,9 @@ class Engine:
         total_samples: int = 0
 
         with torch.no_grad():
-            for batch in dataloader:
+            for batch in tqdm(dataloader):
                 if batch is None:
-                    print("Skipping empty test batch")
+                    if verbose: print("Skipping empty test batch")
                     continue
                 batch_size = batch["text_inputs"]["input_ids"].shape[0]
                 total_samples += batch_size
@@ -164,8 +173,8 @@ class Engine:
         avg_loss = running_loss / total_samples if total_samples > 0 else 0.0
         avg_emo_accuracy = emo_correct / total_samples if total_samples > 0 else 0.0
         avg_sent_accuracy = sent_correct / total_samples if total_samples > 0 else 0.0
-        print(
-            f"Test Loss: {avg_loss:.4f}, Emo Accuracy: {avg_emo_accuracy:.4f}, Sent Accuracy: {avg_sent_accuracy:.4f}"
+        if verbose: print(
+            f"\n\nTest Loss: {avg_loss:.4f}, Emo Accuracy: {avg_emo_accuracy:.4f}, Sent Accuracy: {avg_sent_accuracy:.4f}"
         )
         return avg_loss, avg_emo_accuracy, avg_sent_accuracy
 
@@ -174,6 +183,7 @@ class Engine:
         dataloader: torch.utils.data.DataLoader,
         optimizer: torch.optim.Optimizer,
         device_type: str = "cuda",
+        verbose: bool = True
     ) -> Tuple[float, float, float]:
         """a single training step for the model.
 
@@ -186,9 +196,9 @@ class Engine:
         total_samples: int = 0
 
         # with torch.autocast(device_type=device_type, enabled=True):
-        for batch in dataloader:
+        for batch in tqdm(dataloader):
             if batch is None:
-                print("Skipping empty train batch")
+                if verbose: print("Skipping empty train batch")
                 continue
             batch_size = batch["text_inputs"]["input_ids"].shape[0]
             total_samples += batch_size
@@ -238,8 +248,8 @@ class Engine:
         avg_loss = running_loss / total_samples if total_samples > 0 else 0.0
         avg_emo_accuracy = emo_correct / total_samples if total_samples > 0 else 0.0
         avg_sent_accuracy = sent_correct / total_samples if total_samples > 0 else 0.0
-        print(
-            f"Train Loss: {avg_loss:.4f}, Emo Accuracy: {avg_emo_accuracy:.4f}, Sent Accuracy: {avg_sent_accuracy:.4f}"
+        if verbose: print(
+            f"\n\nTrain Loss: {avg_loss:.4f}, Emo Accuracy: {avg_emo_accuracy:.4f}, Sent Accuracy: {avg_sent_accuracy:.4f}"
         )
         return avg_loss, avg_emo_accuracy, avg_sent_accuracy
 
