@@ -126,7 +126,7 @@ class Engine:
         total_samples: int = 0
 
         with torch.no_grad():
-            for batch in tqdm(dataloader):
+            for batch in dataloader:
                 if batch is None:
                     if verbose: print("Skipping empty test batch")
                     continue
@@ -196,7 +196,7 @@ class Engine:
         total_samples: int = 0
 
         # with torch.autocast(device_type=device_type, enabled=True):
-        for batch in tqdm(dataloader):
+        for batch in dataloader:
             if batch is None:
                 if verbose: print("Skipping empty train batch")
                 continue

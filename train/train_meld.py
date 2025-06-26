@@ -7,6 +7,7 @@ import torchaudio
 from engines.meld_engine import Engine
 from datasets.meld_dataset import meld_dataloader
 from setup.install_ffmpeg import install_ffmpeg
+from models.meld_model import MultimodalSentimentModel
 
 EPOCHS = 10
 BATCH_SIZE = 10
@@ -30,6 +31,7 @@ def parse_args():
     parser.add_argument("--test-dir", type=str, default=SM_CHANNEL_TEST, help="Directory for test data")
     parser.add_argument("--model-dir", type=str, default=SM_MODEL_DIR, help="Directory to save the model")
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu", help="Device to use for training (cuda or cpu)")
+    parser.add_argument("--verbose", action="store_true", help="Enable verbose output during training")
     return parser.parse_args()
 
 
@@ -52,7 +54,10 @@ def main():
         print(f"Memory allocated on CUDA device: {memory_allocated:.2f} MB")
 
 
-    engine = Engine(device=device)
+    model = MultimodalSentimentModel()
+    model.load_state_dict(torch.load(os.path.join(args.model_dir, "model.pth"), map_location=device))
+
+    engine = Engine(device=device, model=model)
     optimizer = torch.optim.Adam(engine.model.parameters(), lr=1e-4)
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=5, gamma=0.1)
     train_loader = meld_dataloader(
@@ -66,7 +71,7 @@ def main():
     dev_loader = meld_dataloader(
         csv_path=os.path.join(args.validation_dir, "dev_sent_emo.csv"),
         video_dir=os.path.join(args.validation_dir, "dev_splits_complete"),
-        batch_size=BATCH_SIZE,
+        batch_size=args.batch_size,
         shuffle=False,
         pin_memory=True,
         drop_last=True
@@ -75,7 +80,7 @@ def main():
     test_loader = meld_dataloader(
         csv_path=os.path.join(args.test_dir, "test_sent_emo.csv"),
         video_dir=os.path.join(args.test_dir, "test_splits_complete"),
-        batch_size=BATCH_SIZE,
+        batch_size=args.batch_size,
         shuffle=False,
         pin_memory=True,
         drop_last=True
@@ -85,18 +90,18 @@ def main():
         train_dataloader=train_loader,
         test_dataloader=dev_loader,
         optimizer=optimizer,
-        num_epochs=EPOCHS,
-        batch_size=BATCH_SIZE,
-        scheduler=scheduler
+        num_epochs=args.epochs,
+        scheduler=scheduler,
+        verbose=args.verbose
     )
 
     print("Training completed.")
     print("Train Results:", results)
 
-    print("Beginning evaluation on test set...")
-    test_results = engine.test(test_loader)
+    # print("Beginning evaluation on test set...")
+    # test_results = engine.test(test_loader)
 
-    print("Test Results:", test_results)
+    # print("Test Results:", test_results)
 
 if __name__ == "__main__":
     main()
